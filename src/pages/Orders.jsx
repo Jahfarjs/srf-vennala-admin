@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import Pagination from '../components/Pagination';
 import { Search, Plus, Edit2, Trash2, X, Download, RefreshCw, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -17,6 +18,12 @@ const Orders = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [yearFilter, setYearFilter] = useState(new Date().getFullYear().toString());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    pages: 0
+  });
+  const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
@@ -36,27 +43,41 @@ const Orders = () => {
   useEffect(() => {
     fetchOrders();
     fetchRelatedData();
+  }, [searchTerm, statusFilter, typeFilter, monthFilter, yearFilter, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
   }, [searchTerm, statusFilter, typeFilter, monthFilter, yearFilter]);
 
   const fetchOrders = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/orders', {
         params: {
           search: searchTerm,
           status: statusFilter,
           type: typeFilter,
           month: monthFilter,
-          year: yearFilter
+          year: yearFilter,
+          page: currentPage,
+          limit: itemsPerPage
         }
       });
       if (response.data.success) {
         setOrders(response.data.data);
+        setPagination(response.data.pagination);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const fetchRelatedData = async () => {
@@ -356,90 +377,101 @@ const Orders = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Salesman</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {orders.length === 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
-                      No orders found
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Salesman</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                   </tr>
-                ) : (
-                  orders.map((order) => (
-                    <tr 
-                      key={order._id} 
-                      className="hover:bg-slate-50/50 cursor-pointer transition-colors"
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setShowDetailModal(true);
-                      }}
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {orders.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
+                        No orders found
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">
-                        {order.type}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium">
-                        {order.customerName?.name || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.status]}`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                        {order.createdByType === 'admin' ? 'Admin' : (order.createdBy?.name || '-')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                          {order.status !== 'delivered' && (
+                    </tr>
+                  ) : (
+                    orders.map((order) => (
+                      <tr 
+                        key={order._id} 
+                        className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setShowDetailModal(true);
+                        }}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 capitalize">
+                          {order.type}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 font-medium">
+                          {order.customerName?.name || '-'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[order.status]}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {order.createdByType === 'admin' ? 'Admin' : (order.createdBy?.name || '-')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            {order.status !== 'delivered' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedOrder(order);
+                                  setNewStatus(getNextStatus(order.status));
+                                  setShowStatusModal(true);
+                                }}
+                                className="text-emerald-600 hover:text-emerald-900 transition-colors"
+                                title="Update Status"
+                              >
+                                <RefreshCw className="w-5 h-5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleEdit(order)}
+                              className="text-slate-600 hover:text-slate-900 transition-colors"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
                             <button
                               onClick={() => {
                                 setSelectedOrder(order);
-                                setNewStatus(getNextStatus(order.status));
-                                setShowStatusModal(true);
+                                setShowDeleteModal(true);
                               }}
-                              className="text-emerald-600 hover:text-emerald-900 transition-colors"
-                              title="Update Status"
+                              className="text-rose-600 hover:text-rose-900 transition-colors"
                             >
-                              <RefreshCw className="w-5 h-5" />
+                              <Trash2 className="w-5 h-5" />
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleEdit(order)}
-                            className="text-slate-600 hover:text-slate-900 transition-colors"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedOrder(order);
-                              setShowDeleteModal(true);
-                            }}
-                            className="text-rose-600 hover:text-rose-900 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
       </div>
 

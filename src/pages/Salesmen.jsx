@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import Pagination from '../components/Pagination';
 import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
 
 const Salesmen = () => {
   const [salesmen, setSalesmen] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    pages: 0
+  });
+  const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
@@ -22,21 +29,37 @@ const Salesmen = () => {
 
   useEffect(() => {
     fetchSalesmen();
+  }, [searchTerm, currentPage]);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
   }, [searchTerm]);
 
   const fetchSalesmen = async () => {
     try {
+      setLoading(true);
       const response = await api.get('/salesman', {
-        params: { search: searchTerm }
+        params: { 
+          search: searchTerm,
+          page: currentPage,
+          limit: itemsPerPage
+        }
       });
       if (response.data.success) {
         setSalesmen(response.data.data);
+        setPagination(response.data.pagination);
       }
     } catch (error) {
       console.error('Error fetching salesmen:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const showAlert = (title, message, type = 'error') => {
@@ -132,62 +155,73 @@ const Salesmen = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-600"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-slate-50/80 border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Username</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Phone</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Created At</th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {salesmen.length === 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50/80 border-b border-slate-200">
                   <tr>
-                    <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                      No salesmen found
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Username</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Created At</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                   </tr>
-                ) : (
-                  salesmen.map((salesman) => (
-                    <tr key={salesman._id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                        {salesman.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                        {salesman.username}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                        {salesman.phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                        {new Date(salesman.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleEdit(salesman)}
-                          className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
-                        >
-                          <Edit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedSalesman(salesman);
-                            setShowDeleteModal(true);
-                          }}
-                          className="text-rose-600 hover:text-rose-900 transition-colors"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {salesmen.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                        No salesmen found
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    salesmen.map((salesman) => (
+                      <tr key={salesman._id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                          {salesman.name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {salesman.username}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {salesman.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {new Date(salesman.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleEdit(salesman)}
+                            className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
+                          >
+                            <Edit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedSalesman(salesman);
+                              setShowDeleteModal(true);
+                            }}
+                            className="text-rose-600 hover:text-rose-900 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+            />
+          </>
         )}
       </div>
 
