@@ -9,6 +9,7 @@ const Items = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sizeFilter, setSizeFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -29,19 +30,20 @@ const Items = () => {
 
   useEffect(() => {
     fetchItems();
-  }, [searchTerm, currentPage]);
+  }, [searchTerm, sizeFilter, currentPage]);
 
   // Reset to page 1 when search term changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, sizeFilter]);
 
   const fetchItems = async () => {
     try {
       setLoading(true);
+      const searchQuery = [searchTerm, sizeFilter].filter(Boolean).join(' ').trim();
       const response = await api.get('/items', {
         params: { 
-          search: searchTerm,
+          search: searchQuery,
           page: currentPage,
           limit: itemsPerPage
         }
@@ -136,6 +138,52 @@ const Items = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/10 transition-all"
           />
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setSizeFilter('')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              sizeFilter === ''
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setSizeFilter('0.8mm')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              sizeFilter === '0.8mm'
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            0.8mm
+          </button>
+          <button
+            type="button"
+            onClick={() => setSizeFilter('1mm')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              sizeFilter === '1mm'
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            1mm
+          </button>
+          <button
+            type="button"
+            onClick={() => setSizeFilter('3mm')}
+            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              sizeFilter === '3mm'
+                ? 'bg-slate-800 text-white border-slate-800'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            3mm
+          </button>
         </div>
         <button
           onClick={() => setShowModal(true)}
