@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye } from 'lucide-react';
 
 const Cargo = () => {
   const [cargo, setCargo] = useState([]);
@@ -17,9 +18,11 @@ const Cargo = () => {
   const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' });
   const [selectedCargo, setSelectedCargo] = useState(null);
+  const [detailCargo, setDetailCargo] = useState(null);
   const [formData, setFormData] = useState({ name: '' });
 
   useEffect(() => {
@@ -109,6 +112,17 @@ const Cargo = () => {
     setFormData({ name: '' });
   };
 
+  const handleViewDetail = (cargoItem) => {
+    setDetailCargo(cargoItem);
+    setShowDetailModal(true);
+  };
+
+  const getDetailFields = (cargoItem) => [
+    { label: 'Name', value: cargoItem?.name, type: 'text', key: 'name' },
+    { label: 'Created At', value: cargoItem?.createdAt, type: 'datetime', key: 'createdAt' },
+    { label: 'Updated At', value: cargoItem?.updatedAt, type: 'datetime', key: 'updatedAt' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Title and Controls in one row */}
@@ -162,26 +176,38 @@ const Cargo = () => {
                     </tr>
                   ) : (
                     cargo.map((cargoItem) => (
-                      <tr key={cargoItem._id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                          {cargoItem.name}
-                        </td>
+                      <tr
+                        key={cargoItem._id}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        onClick={() => handleViewDetail(cargoItem)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{cargoItem.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                           {new Date(cargoItem.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            onClick={() => handleEdit(cargoItem)}
-                            className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(cargoItem); }}
+                            className="text-indigo-500 hover:text-indigo-700 mr-3 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(cargoItem); }}
+                            className="text-slate-600 hover:text-slate-900 mr-3 transition-colors"
+                            title="Edit"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedCargo(cargoItem);
                               setShowDeleteModal(true);
                             }}
                             className="text-rose-600 hover:text-rose-900 transition-colors"
+                            title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -250,6 +276,15 @@ const Cargo = () => {
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailCargo(null); }}
+        title="Cargo Details"
+        fields={getDetailFields(detailCargo)}
+        onEdit={() => detailCargo && handleEdit(detailCargo)}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

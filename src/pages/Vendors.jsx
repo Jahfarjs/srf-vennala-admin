@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye } from 'lucide-react';
 
 const Vendors = () => {
   const [vendors, setVendors] = useState([]);
@@ -18,9 +19,11 @@ const Vendors = () => {
   const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' });
   const [selectedVendor, setSelectedVendor] = useState(null);
+  const [detailVendor, setDetailVendor] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -121,6 +124,20 @@ const Vendors = () => {
     setFormData({ name: '', phone: '', gstin: '', isBlocked: false });
   };
 
+  const handleViewDetail = (vendor) => {
+    setDetailVendor(vendor);
+    setShowDetailModal(true);
+  };
+
+  const getDetailFields = (vendor) => [
+    { label: 'Name', value: vendor?.name, type: 'text', key: 'name' },
+    { label: 'Phone', value: vendor?.phone, type: 'text', key: 'phone' },
+    { label: 'GSTIN', value: vendor?.gstin || '—', type: 'text', key: 'gstin' },
+    { label: 'Status', value: vendor?.isBlocked ? 'Blocked' : 'Active', type: 'badge', key: 'status' },
+    { label: 'Created At', value: vendor?.createdAt, type: 'datetime', key: 'createdAt' },
+    { label: 'Updated At', value: vendor?.updatedAt, type: 'datetime', key: 'updatedAt' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Title and Controls in one row */}
@@ -185,38 +202,44 @@ const Vendors = () => {
                     </tr>
                   ) : (
                     vendors.map((vendor) => (
-                      <tr key={vendor._id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                          {vendor.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {vendor.phone}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {vendor.gstin || '-'}
-                        </td>
+                      <tr
+                        key={vendor._id}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        onClick={() => handleViewDetail(vendor)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{vendor.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{vendor.phone}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{vendor.gstin || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            vendor.isBlocked
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-emerald-100 text-emerald-800'
+                            vendor.isBlocked ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
                           }`}>
                             {vendor.isBlocked ? 'Blocked' : 'Active'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            onClick={() => handleEdit(vendor)}
-                            className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(vendor); }}
+                            className="text-indigo-500 hover:text-indigo-700 mr-3 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(vendor); }}
+                            className="text-slate-600 hover:text-slate-900 mr-3 transition-colors"
+                            title="Edit"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedVendor(vendor);
                               setShowDeleteModal(true);
                             }}
                             className="text-rose-600 hover:text-rose-900 transition-colors"
+                            title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -319,6 +342,15 @@ const Vendors = () => {
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailVendor(null); }}
+        title="Vendor Details"
+        fields={getDetailFields(detailVendor)}
+        onEdit={() => detailVendor && handleEdit(detailVendor)}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
