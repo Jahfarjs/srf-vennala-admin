@@ -3,7 +3,7 @@ import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff } from 'lucide-react';
 
 const Salesmen = () => {
   const [salesmen, setSalesmen] = useState([]);
@@ -26,6 +26,7 @@ const Salesmen = () => {
     password: '',
     phone: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchSalesmen();
@@ -119,6 +120,7 @@ const Salesmen = () => {
     setShowModal(false);
     setSelectedSalesman(null);
     setFormData({ name: '', username: '', password: '', phone: '' });
+    setShowPassword(false);
   };
 
   return (
@@ -265,13 +267,23 @@ const Salesmen = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password {selectedSalesman && <span className="text-slate-500 font-normal">(leave blank to keep current)</span>}
                 </label>
-                <input
-                  type="password"
-                  required={!selectedSalesman}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required={!selectedSalesman}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               
               <div>
