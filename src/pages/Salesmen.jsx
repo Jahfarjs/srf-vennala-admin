@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
 import { Search, Plus, Edit2, Trash2, X, Eye, EyeOff } from 'lucide-react';
 
@@ -10,29 +11,23 @@ const Salesmen = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    pages: 0
-  });
+  const [pagination, setPagination] = useState({ total: 0, pages: 0 });
   const itemsPerPage = 10;
+
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' });
   const [selectedSalesman, setSelectedSalesman] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    username: '',
-    password: '',
-    phone: ''
-  });
+  const [detailSalesman, setDetailSalesman] = useState(null);
+  const [formData, setFormData] = useState({ name: '', username: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchSalesmen();
   }, [searchTerm, currentPage]);
 
-  // Reset to page 1 when search term changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
@@ -41,11 +36,7 @@ const Salesmen = () => {
     try {
       setLoading(true);
       const response = await api.get('/salesman', {
-        params: { 
-          search: searchTerm,
-          page: currentPage,
-          limit: itemsPerPage
-        }
+        params: { search: searchTerm, page: currentPage, limit: itemsPerPage }
       });
       if (response.data.success) {
         setSalesmen(response.data.data);
@@ -68,19 +59,21 @@ const Salesmen = () => {
     setShowAlertModal(true);
   };
 
+  const handleViewDetail = (salesman) => {
+    setDetailSalesman(salesman);
+    setShowDetailModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     try {
       if (selectedSalesman) {
-        // Update
         const response = await api.put(`/salesman/${selectedSalesman._id}`, formData);
         if (response.data.success) {
           fetchSalesmen();
           handleCloseModal();
         }
       } else {
-        // Create
         const response = await api.post('/salesman', formData);
         if (response.data.success) {
           fetchSalesmen();
@@ -107,12 +100,7 @@ const Salesmen = () => {
 
   const handleEdit = (salesman) => {
     setSelectedSalesman(salesman);
-    setFormData({
-      name: salesman.name,
-      username: salesman.username,
-      password: '',
-      phone: salesman.phone
-    });
+    setFormData({ name: salesman.name, username: salesman.username, password: '', phone: salesman.phone });
     setShowModal(true);
   };
 
@@ -123,14 +111,22 @@ const Salesmen = () => {
     setShowPassword(false);
   };
 
+  const getDetailFields = (salesman) => [
+    { label: 'Name', value: salesman?.name, type: 'text', key: 'name' },
+    { label: 'Username', value: salesman?.username, type: 'text', key: 'username' },
+    { label: 'Password', value: salesman?.plainPassword || '', type: 'password', key: 'password' },
+    { label: 'Phone', value: salesman?.phone, type: 'text', key: 'phone' },
+    { label: 'Created At', value: salesman?.createdAt, type: 'datetime', key: 'createdAt' },
+    { label: 'Updated At', value: salesman?.updatedAt, type: 'datetime', key: 'updatedAt' },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Title and Controls in one row */}
+      {/* Title and Controls */}
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           <h1 className="text-4xl font-bold text-slate-800" style={{ fontFamily: "'Inter', 'Segoe UI', sans-serif" }}>Salesmen</h1>
         </div>
-
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
           <input
@@ -172,38 +168,44 @@ const Salesmen = () => {
                 <tbody className="divide-y divide-slate-200">
                   {salesmen.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                        No salesmen found
-                      </td>
+                      <td colSpan="5" className="px-6 py-12 text-center text-slate-500">No salesmen found</td>
                     </tr>
                   ) : (
                     salesmen.map((salesman) => (
-                      <tr key={salesman._id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                          {salesman.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {salesman.username}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {salesman.phone}
-                        </td>
+                      <tr
+                        key={salesman._id}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        onClick={() => handleViewDetail(salesman)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{salesman.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{salesman.username}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{salesman.phone}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                           {new Date(salesman.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            onClick={() => handleEdit(salesman)}
-                            className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(salesman); }}
+                            className="text-indigo-500 hover:text-indigo-700 mr-3 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(salesman); }}
+                            className="text-slate-600 hover:text-slate-900 mr-3 transition-colors"
+                            title="Edit"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedSalesman(salesman);
                               setShowDeleteModal(true);
                             }}
                             className="text-rose-600 hover:text-rose-900 transition-colors"
+                            title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -214,8 +216,6 @@ const Salesmen = () => {
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
             <Pagination
               currentPage={currentPage}
               totalPages={pagination.pages}
@@ -226,6 +226,15 @@ const Salesmen = () => {
           </>
         )}
       </div>
+
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailSalesman(null); }}
+        title="Salesman Details"
+        fields={getDetailFields(detailSalesman)}
+        onEdit={() => detailSalesman && handleEdit(detailSalesman)}
+      />
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -239,7 +248,6 @@ const Salesmen = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
             <form onSubmit={handleSubmit} className="px-6 py-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
@@ -251,7 +259,6 @@ const Salesmen = () => {
                   className="w-full"
                 />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                 <input
@@ -262,7 +269,6 @@ const Salesmen = () => {
                   className="w-full"
                 />
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password {selectedSalesman && <span className="text-slate-500 font-normal">(leave blank to keep current)</span>}
@@ -285,7 +291,6 @@ const Salesmen = () => {
                   </button>
                 </div>
               </div>
-              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                 <input
@@ -297,20 +302,9 @@ const Salesmen = () => {
                 />
               </div>
             </form>
-              
             <div className="srf-modal-footer">
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="srf-btn srf-btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                onClick={handleSubmit}
-                className="srf-btn srf-btn-primary"
-              >
+              <button type="button" onClick={handleCloseModal} className="srf-btn srf-btn-secondary">Cancel</button>
+              <button type="submit" onClick={handleSubmit} className="srf-btn srf-btn-primary">
                 {selectedSalesman ? 'Update' : 'Create'}
               </button>
             </div>
@@ -321,10 +315,7 @@ const Salesmen = () => {
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setSelectedSalesman(null);
-        }}
+        onClose={() => { setShowDeleteModal(false); setSelectedSalesman(null); }}
         onConfirm={handleDelete}
         title="Delete Salesman"
         message={`Are you sure you want to delete ${selectedSalesman?.name}? This action cannot be undone.`}
@@ -344,4 +335,3 @@ const Salesmen = () => {
 };
 
 export default Salesmen;
-

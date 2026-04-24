@@ -426,6 +426,16 @@ const Orders = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setShowDetailModal(true);
+                              }}
+                              className="text-indigo-500 hover:text-indigo-700 transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-5 h-5" />
+                            </button>
                             {order.status !== 'delivered' && (
                               <button
                                 onClick={() => {
@@ -442,6 +452,7 @@ const Orders = () => {
                             <button
                               onClick={() => handleEdit(order)}
                               className="text-slate-600 hover:text-slate-900 transition-colors"
+                              title="Edit"
                             >
                               <Edit2 className="w-5 h-5" />
                             </button>
@@ -451,6 +462,7 @@ const Orders = () => {
                                 setShowDeleteModal(true);
                               }}
                               className="text-rose-600 hover:text-rose-900 transition-colors"
+                              title="Delete"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>

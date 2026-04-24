@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import api from '../utils/api';
 import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
+import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye } from 'lucide-react';
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -18,9 +19,11 @@ const Items = () => {
   const itemsPerPage = 10;
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' });
   const [selectedItem, setSelectedItem] = useState(null);
+  const [detailItem, setDetailItem] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     rakNo: '',
@@ -120,6 +123,20 @@ const Items = () => {
     setSelectedItem(null);
     setFormData({ name: '', rakNo: '', price: '', quantity: '' });
   };
+
+  const handleViewDetail = (item) => {
+    setDetailItem(item);
+    setShowDetailModal(true);
+  };
+
+  const getDetailFields = (item) => [
+    { label: 'Name', value: item?.name, type: 'text', key: 'name' },
+    { label: 'Rak No', value: item?.rakNo, type: 'text', key: 'rakNo' },
+    { label: 'Price', value: item?.price, type: 'currency', key: 'price' },
+    { label: 'Quantity', value: item?.quantity, type: 'text', key: 'quantity' },
+    { label: 'Created At', value: item?.createdAt, type: 'datetime', key: 'createdAt' },
+    { label: 'Updated At', value: item?.updatedAt, type: 'datetime', key: 'updatedAt' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -222,32 +239,38 @@ const Items = () => {
                     </tr>
                   ) : (
                     items.map((item) => (
-                      <tr key={item._id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                          {item.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {item.rakNo}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          ₹{item.price.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
-                          {item.quantity}
-                        </td>
+                      <tr
+                        key={item._id}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        onClick={() => handleViewDetail(item)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{item.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{item.rakNo}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">₹{item.price.toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{item.quantity}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            onClick={() => handleEdit(item)}
-                            className="text-slate-600 hover:text-slate-900 mr-4 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleViewDetail(item); }}
+                            className="text-indigo-500 hover:text-indigo-700 mr-3 transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                            className="text-slate-600 hover:text-slate-900 mr-3 transition-colors"
+                            title="Edit"
                           >
                             <Edit2 className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedItem(item);
                               setShowDeleteModal(true);
                             }}
                             className="text-rose-600 hover:text-rose-900 transition-colors"
+                            title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -352,6 +375,15 @@ const Items = () => {
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <DetailModal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setDetailItem(null); }}
+        title="Item Details"
+        fields={getDetailFields(detailItem)}
+        onEdit={() => detailItem && handleEdit(detailItem)}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal
