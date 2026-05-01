@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [vendors, setVendors] = useState([]);
   const [items, setItems] = useState([]);
   const [cargo, setCargo] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
@@ -82,14 +83,16 @@ const Orders = () => {
 
   const fetchRelatedData = async () => {
     try {
-      const [customersRes, itemsRes, cargoRes, salesmenRes] = await Promise.all([
-        api.get('/customers'),
+      const [customersRes, vendorsRes, itemsRes, cargoRes, salesmenRes] = await Promise.all([
+        api.get('/customers', { params: { limit: 1000 } }),
+        api.get('/vendors', { params: { limit: 1000 } }),
         api.get('/items'),
         api.get('/cargo'),
         api.get('/salesman')
       ]);
 
       if (customersRes.data.success) setCustomers(customersRes.data.data);
+      if (vendorsRes.data.success) setVendors(vendorsRes.data.data);
       if (itemsRes.data.success) setItems(itemsRes.data.data);
       if (cargoRes.data.success) setCargo(cargoRes.data.data);
       if (salesmenRes.data.success) setSalesmen(salesmenRes.data.data);
@@ -510,7 +513,7 @@ const Orders = () => {
                 <select
                   required
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value, customerName: '' })}
                   className="w-full"
                 >
                   <option value="sell order">Sell Order</option>
@@ -519,17 +522,26 @@ const Orders = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {formData.type === 'purchase order' ? 'Vendor' : 'Customer'}
+                </label>
                 <select
                   required
                   value={formData.customerName}
                   onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
                   className="w-full"
                 >
-                  <option value="">Select Customer</option>
-                  {customers.filter(c => !c.isBlocked).map(customer => (
-                    <option key={customer._id} value={customer._id}>{customer.name}</option>
-                  ))}
+                  <option value="">
+                    {formData.type === 'purchase order' ? 'Select Vendor' : 'Select Customer'}
+                  </option>
+                  {formData.type === 'purchase order'
+                    ? vendors.map(vendor => (
+                        <option key={vendor._id} value={vendor._id}>{vendor.name}</option>
+                      ))
+                    : customers.filter(c => !c.isBlocked).map(customer => (
+                        <option key={customer._id} value={customer._id}>{customer.name}</option>
+                      ))
+                  }
                 </select>
               </div>
 
