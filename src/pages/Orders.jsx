@@ -236,7 +236,10 @@ const Orders = () => {
     ));
   };
 
-  const getNextStatus = (currentStatus) => {
+  const getNextStatus = (currentStatus, orderType) => {
+    if (orderType === 'purchase order') {
+      return currentStatus === 'pending' ? 'completed' : null;
+    }
     const statusMap = {
       'pending': 'to roll',
       'to roll': 'rolled',
@@ -279,7 +282,8 @@ const Orders = () => {
     'to roll': 'bg-blue-100 text-blue-800',
     'rolled': 'bg-purple-100 text-purple-800',
     'billed': 'bg-orange-100 text-orange-800',
-    'delivered': 'bg-green-100 text-green-800'
+    'delivered': 'bg-green-100 text-green-800',
+    'completed': 'bg-green-100 text-green-800'
   };
 
   return (
@@ -436,11 +440,11 @@ const Orders = () => {
                             >
                               <Eye className="w-5 h-5" />
                             </button>
-                            {order.status !== 'delivered' && (
+                            {(order.type === 'purchase order' ? order.status === 'pending' : order.status !== 'delivered') && (
                               <button
                                 onClick={() => {
                                   setSelectedOrder(order);
-                                  setNewStatus(getNextStatus(order.status));
+                                  setNewStatus(getNextStatus(order.status, order.type));
                                   setShowStatusModal(true);
                                 }}
                                 className="text-emerald-600 hover:text-emerald-900 transition-colors"

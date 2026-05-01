@@ -4,13 +4,14 @@ import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
 import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X, Eye } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye, ShieldOff, ShieldCheck } from 'lucide-react';
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBlocked, setFilterBlocked] = useState('');
+  const [filterPayment, setFilterPayment] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -23,34 +24,37 @@ const Customers = () => {
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'error' });
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showBlockModal, setShowBlockModal] = useState(false);
+  const [blockTarget, setBlockTarget] = useState(null);
   const [detailCustomer, setDetailCustomer] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     gstin: '',
-    isBlocked: false
+    isBlocked: false,
+    paymentRating: 'good'
   });
 
   useEffect(() => {
     fetchCustomers();
-  }, [searchTerm, filterBlocked, currentPage]);
+  }, [searchTerm, filterBlocked, filterPayment, currentPage]);
 
   // Reset to page 1 when search term or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterBlocked]);
+  }, [searchTerm, filterBlocked, filterPayment]);
 
   const fetchCustomers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/customers', {
-        params: { 
-          search: searchTerm, 
-          isBlocked: filterBlocked,
-          page: currentPage,
-          limit: itemsPerPage
-        }
-      });
+      const params = { 
+        search: searchTerm,
+        page: currentPage,
+        limit: itemsPerPage
+      };
+      if (filterBlocked !== '') params.isBlocked = filterBlocked;
+      if (filterPayment !== '') params.paymentRating = filterPayment;
+      const response = await api.get('/customers', { params });
       if (response.data.success) {
         setCustomers(response.data.data);
         setPagination(response.data.pagination);
@@ -113,7 +117,8 @@ const Customers = () => {
       name: customer.name,
       phone: customer.phone,
       gstin: customer.gstin || '',
-      isBlocked: customer.isBlocked
+      isBlocked: customer.isBlocked,
+      paymentRating: customer.paymentRating || 'good'
     });
     setShowModal(true);
   };
@@ -121,7 +126,23 @@ const Customers = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedCustomer(null);
-    setFormData({ name: '', phone: '', gstin: '', isBlocked: false });
+    setFormData({ name: '', phone: '', gstin: '', isBlocked: false, paymentRating: 'good' });
+  };
+
+  const PAYMENT_RATING = {
+    good:    { label: 'Good Payer',    bg: 'bg-emerald-100', text: 'text-emerald-800', dot: 'bg-emerald-500' },
+    average: { label: 'Average Payer', bg: 'bg-amber-100',   text: 'text-amber-800',   dot: 'bg-amber-500'   },
+    bad:     { label: 'Poor Payer',    bg: 'bg-rose-100',    text: 'text-rose-800',    dot: 'bg-rose-500'    },
+  };
+
+  const PaymentBadge = ({ rating }) => {
+    const cfg = PAYMENT_RATING[rating] || PAYMENT_RATING.good;
+    return (
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full ${cfg.bg} ${cfg.text}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+        {cfg.label}
+      </span>
+    );
   };
 
   const handleViewDetail = (customer) => {
@@ -129,11 +150,33 @@ const Customers = () => {
     setShowDetailModal(true);
   };
 
+  const confirmToggleBlock = (customer) => {
+    setBlockTarget(customer);
+    setShowBlockModal(true);
+  };
+
+  const handleToggleBlock = async () => {
+    if (!blockTarget) return;
+    try {
+      const response = await api.put(`/customers/${blockTarget._id}`, {
+        isBlocked: !blockTarget.isBlocked,
+      });
+      if (response.data.success) {
+        fetchCustomers();
+      }
+    } catch (error) {
+      showAlert('Error', error.response?.data?.message || 'An error occurred', 'error');
+    } finally {
+      setBlockTarget(null);
+    }
+  };
+
   const getDetailFields = (customer) => [
     { label: 'Name', value: customer?.name, type: 'text', key: 'name' },
     { label: 'Phone', value: customer?.phone, type: 'text', key: 'phone' },
     { label: 'GSTIN', value: customer?.gstin || '—', type: 'text', key: 'gstin' },
     { label: 'Status', value: customer?.isBlocked ? 'Blocked' : 'Active', type: 'badge', key: 'status' },
+    { label: 'Payment Rating', value: PAYMENT_RATING[customer?.paymentRating]?.label || 'Good Payer', type: 'text', key: 'paymentRating' },
     { label: 'Created At', value: customer?.createdAt, type: 'datetime', key: 'createdAt' },
     { label: 'Updated At', value: customer?.updatedAt, type: 'datetime', key: 'updatedAt' },
   ];
@@ -159,11 +202,21 @@ const Customers = () => {
         <select
           value={filterBlocked}
           onChange={(e) => setFilterBlocked(e.target.value)}
-          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/10 transition-all min-w-[180px]"
+          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/10 transition-all min-w-[150px]"
         >
           <option value="">All Customers</option>
           <option value="false">Active Only</option>
           <option value="true">Blocked Only</option>
+        </select>
+        <select
+          value={filterPayment}
+          onChange={(e) => setFilterPayment(e.target.value)}
+          className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/10 transition-all min-w-[160px]"
+        >
+          <option value="">All Payment Ratings</option>
+          <option value="good">Good Payer</option>
+          <option value="average">Average Payer</option>
+          <option value="bad">Poor Payer</option>
         </select>
         <button
           onClick={() => setShowModal(true)}
@@ -189,6 +242,7 @@ const Customers = () => {
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">GSTIN</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Payment</th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
                     <th className="px-6 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -196,7 +250,7 @@ const Customers = () => {
                 <tbody className="divide-y divide-slate-200">
                   {customers.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
                         No customers found
                       </td>
                     </tr>
@@ -211,6 +265,9 @@ const Customers = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{customer.phone}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{customer.gstin || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <PaymentBadge rating={customer.paymentRating || 'good'} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             customer.isBlocked ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
                           }`}>
@@ -224,6 +281,13 @@ const Customers = () => {
                             title="View Details"
                           >
                             <Eye className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); confirmToggleBlock(customer); }}
+                            className={`mr-3 transition-colors ${customer.isBlocked ? 'text-emerald-600 hover:text-emerald-800' : 'text-amber-500 hover:text-amber-700'}`}
+                            title={customer.isBlocked ? 'Unblock Customer' : 'Block Customer'}
+                          >
+                            {customer.isBlocked ? <ShieldCheck className="w-5 h-5" /> : <ShieldOff className="w-5 h-5" />}
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleEdit(customer); }}
@@ -309,6 +373,19 @@ const Customers = () => {
                 />
               </div>
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Rating</label>
+                <select
+                  value={formData.paymentRating}
+                  onChange={(e) => setFormData({ ...formData, paymentRating: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-slate-700 focus:border-slate-400 focus:ring-2 focus:ring-slate-400/20 transition-all"
+                >
+                  <option value="good">Good Payer</option>
+                  <option value="average">Average Payer</option>
+                  <option value="bad">Poor Payer</option>
+                </select>
+              </div>
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -363,6 +440,20 @@ const Customers = () => {
         title="Delete Customer"
         message={`Are you sure you want to delete ${selectedCustomer?.name}? This action cannot be undone.`}
         type="danger"
+      />
+
+      {/* Block / Unblock Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showBlockModal}
+        onClose={() => { setShowBlockModal(false); setBlockTarget(null); }}
+        onConfirm={handleToggleBlock}
+        title={blockTarget?.isBlocked ? 'Unblock Customer' : 'Block Customer'}
+        message={
+          blockTarget?.isBlocked
+            ? `Are you sure you want to unblock ${blockTarget?.name}? They will be selectable in the mobile app again.`
+            : `Are you sure you want to block ${blockTarget?.name}? They will not be selectable in the mobile app.`
+        }
+        type={blockTarget?.isBlocked ? 'info' : 'warning'}
       />
 
       {/* Alert Modal */}
