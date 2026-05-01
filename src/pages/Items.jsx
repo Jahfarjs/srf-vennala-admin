@@ -4,7 +4,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import AlertModal from '../components/AlertModal';
 import DetailModal from '../components/DetailModal';
 import Pagination from '../components/Pagination';
-import { Search, Plus, Edit2, Trash2, X, Eye } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Eye, Tag } from 'lucide-react';
 
 const Items = () => {
   const [items, setItems] = useState([]);
@@ -28,8 +28,18 @@ const Items = () => {
     name: '',
     rakNo: '',
     price: '',
-    quantity: ''
+    quantity: '',
+    category: ''
   });
+  const [categories, setCategories] = useState([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     fetchItems();
@@ -39,6 +49,45 @@ const Items = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, sizeFilter]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await api.get('/categories');
+      if (response.data.success) {
+        setCategories(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const response = await api.post('/categories', { name: newCategoryName.trim() });
+      if (response.data.success) {
+        setNewCategoryName('');
+        fetchCategories();
+      }
+    } catch (error) {
+      showAlert('Error', error.response?.data?.message || 'Failed to add category', 'error');
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    try {
+      const response = await api.delete(`/categories/${categoryToDelete._id}`);
+      if (response.data.success) {
+        setCategoryToDelete(null);
+        setShowDeleteCategoryModal(false);
+        fetchCategories();
+        if (sizeFilter === categoryToDelete.name) setSizeFilter('');
+      }
+    } catch (error) {
+      showAlert('Error', error.response?.data?.message || 'Failed to delete category', 'error');
+    }
+  };
 
   const fetchItems = async () => {
     try {
@@ -113,7 +162,8 @@ const Items = () => {
       name: item.name,
       rakNo: item.rakNo,
       price: item.price,
-      quantity: item.quantity
+      quantity: item.quantity,
+      category: item.category || ''
     });
     setShowModal(true);
   };
@@ -121,7 +171,7 @@ const Items = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedItem(null);
-    setFormData({ name: '', rakNo: '', price: '', quantity: '' });
+    setFormData({ name: '', rakNo: '', price: '', quantity: '', category: '' });
   };
 
   const handleViewDetail = (item) => {
@@ -132,6 +182,7 @@ const Items = () => {
   const getDetailFields = (item) => [
     { label: 'Name', value: item?.name, type: 'text', key: 'name' },
     { label: 'Rak No', value: item?.rakNo, type: 'text', key: 'rakNo' },
+    { label: 'Category', value: item?.category || '-', type: 'text', key: 'category' },
     { label: 'Price', value: item?.price, type: 'currency', key: 'price' },
     { label: 'Quantity', value: item?.quantity, type: 'text', key: 'quantity' },
     { label: 'Created At', value: item?.createdAt, type: 'datetime', key: 'createdAt' },
@@ -156,7 +207,7 @@ const Items = () => {
             className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/10 transition-all"
           />
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
           <button
             type="button"
             onClick={() => setSizeFilter('')}
@@ -168,38 +219,28 @@ const Items = () => {
           >
             All
           </button>
+          {categories.map((cat) => (
+            <button
+              key={cat._id}
+              type="button"
+              onClick={() => setSizeFilter(cat.name)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                sizeFilter === cat.name
+                  ? 'bg-slate-800 text-white border-slate-800'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
           <button
             type="button"
-            onClick={() => setSizeFilter('0.8mm')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              sizeFilter === '0.8mm'
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
+            onClick={() => setShowCategoryModal(true)}
+            className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium border border-dashed border-slate-400 text-slate-500 hover:bg-slate-50 transition-colors"
+            title="Manage Categories"
           >
-            0.8mm
-          </button>
-          <button
-            type="button"
-            onClick={() => setSizeFilter('1mm')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              sizeFilter === '1mm'
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            1mm
-          </button>
-          <button
-            type="button"
-            onClick={() => setSizeFilter('3mm')}
-            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-              sizeFilter === '3mm'
-                ? 'bg-slate-800 text-white border-slate-800'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            3mm
+            <Tag className="w-4 h-4" />
+            Manage
           </button>
         </div>
         <button
@@ -354,6 +395,20 @@ const Items = () => {
                   className="w-full"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full"
+                >
+                  <option value="">-- None --</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat.name}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
             </form>
               
             <div className="srf-modal-footer">
@@ -405,6 +460,68 @@ const Items = () => {
         title={alertConfig.title}
         message={alertConfig.message}
         type={alertConfig.type}
+      />
+
+      {/* Manage Categories Modal */}
+      {showCategoryModal && (
+        <div className="srf-modal-backdrop">
+          <div className="srf-modal-panel max-w-sm">
+            <div className="srf-modal-header">
+              <h3 className="text-lg font-semibold text-slate-900">Manage Categories</h3>
+              <button onClick={() => { setShowCategoryModal(false); setNewCategoryName(''); }} className="srf-icon-btn text-slate-500 hover:text-slate-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-6 space-y-4">
+              {/* Add new category */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="New category name (e.g. 72mm)"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                  className="flex-1"
+                />
+                <button
+                  onClick={handleAddCategory}
+                  className="flex items-center gap-1 bg-slate-700 text-white px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-sm font-medium"
+                >
+                  <Plus className="w-4 h-4" /> Add
+                </button>
+              </div>
+              {/* Existing categories */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {categories.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-4">No categories yet</p>
+                ) : (
+                  categories.map((cat) => (
+                    <div key={cat._id} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg">
+                      <span className="text-sm font-medium text-slate-800">{cat.name}</span>
+                      <button
+                        onClick={() => { setCategoryToDelete(cat); setShowDeleteCategoryModal(true); }}
+                        className="text-rose-500 hover:text-rose-700 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Category Confirmation */}
+      <ConfirmModal
+        isOpen={showDeleteCategoryModal}
+        onClose={() => { setShowDeleteCategoryModal(false); setCategoryToDelete(null); }}
+        onConfirm={handleDeleteCategory}
+        title="Delete Category"
+        message={`Are you sure you want to delete the category "${categoryToDelete?.name}"?`}
+        type="danger"
       />
     </div>
   );
